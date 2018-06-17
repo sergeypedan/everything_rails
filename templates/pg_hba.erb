@@ -1,0 +1,18 @@
+# Type   Database   User   Address        Method
+local    all        all                   trust
+# host   all        all    localhost      trust
+# host   all        all    127.0.0.1/32   trust
+# host   all        all     ::1/128       trust
+# host   <%= node['postgresql']['db_name'] %>    <%= node['postgresql']['user'] %>    127.0.0.1   trust
+
+
+# https://postgrespro.ru/docs/postgrespro/10/auth-pg-hba-conf.html
+
+# local      database  user  auth-method  [auth-options]
+# host       database  user  address  auth-method  [auth-options]
+# hostssl    database  user  address  auth-method  [auth-options]
+# hostnossl  database  user  address  auth-method  [auth-options]
+# host       database  user  IP-address  IP-mask  auth-method  [auth-options]
+# hostssl    database  user  IP-address  IP-mask  auth-method  [auth-options]
+# hostnossl  database  user  IP-address  IP-mask  auth-method  [auth-options]
+

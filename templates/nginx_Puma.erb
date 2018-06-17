@@ -1,0 +1,29 @@
+upstream app {
+  server unix:<%= node['puma']['socket_path'] %> fail_timeout=0;
+  # server 127.0.0.1:3000 fail_timeout=0;
+}
+
+server {
+  listen 80;
+  root <%= node['deploy']['work_dir'] %>/public;
+  server_name <%= node['project']['domain'] %> www.<%= node['project']['domain'] %>;
+
+  location / {
+    try_files $uri/index.html $uri @app;
+  }
+
+  location ~* ^.+\.(jpg|jpeg|gif|png|ico|zip|tgz|gz|rar|bz2|doc|xls|exe|pdf|ppt|txt|tar|mid|midi|wav|bmp|rtf|mp3|flv|mpeg|avi)$ {
+    try_files $uri @app;
+  }
+
+  location @app {
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header Host $http_host;
+    proxy_redirect off;
+    proxy_pass http://app;
+  }
+
+  error_page 500 502 503 504 /500.html;
+  client_max_body_size 4G;
+  keepalive_timeout 10;
+}
