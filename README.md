@@ -2,58 +2,12 @@
 
 ### OS user
 
-+ Create OS `deploy` user
 - record password in passwords file
-+ include deploy user in sudoers group
 - add RSA key for deployer user
-
-### Locale
-
-+ set locale
-
-### Time
-
-+ Time zone set
-
-### Base installations
-
-+ upgrade OS packages
-+ Upgrade Git
-
-### Install Ruby
-
-+ Install Chruby
-+ Install Ruby
-+ Install Rails
-+ Install Bundler
-+ Install Capistrano
-+ Install ImageMagick
-+ Install RMagick
-
-### Node
-
-+ Install Node.js
-
-### DB
-
-+ Install PostgreSQL
-+ Create DB user
-+ Create DB user password
-
-### Web server
-
-+ Install NGNIX
-+ Configure NGNIX
-+ Start NGNIX
-+ Stop Apache
-
 
 ### Prepare Rails app
 
 - Change ownership of the application files to deployer user
-+ bundle install
-+ Rake create & prepare app DB
-+ Precompile assets
 - Сделать backup Heroku
 - Скачать DB dump из Heroku на Digital Ocean
 - Импортировать DB dump в Postgres
