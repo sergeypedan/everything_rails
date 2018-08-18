@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-version      '0.1.224'
+version      '0.1.225'
 chef_version '>= 12.1' if respond_to? :chef_version
 
 depends 'chruby', '~> 0.2.2'
