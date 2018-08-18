@@ -11,7 +11,7 @@ node.default['deploy']['git_dir']     = "#{node['deploy']['project_dir']}/git"
 node.default['deploy']['work_dir']    = "#{node['deploy']['project_dir']}/current"
 node.default['deploy']['shared_dir']  = "#{node['deploy']['project_dir']}/shared"
 
-node.default['rails']['version'] = "5.2.0"
+node.default['rails']['version'] = "5.2.1"
 
 node.default['puma']['config_path'] = "#{node['deploy']['work_dir']}/config/puma/production.rb"
 node.default['puma']['log_dir']     = "/var/log/puma/#{node['project']['domain']}"
@@ -27,7 +27,7 @@ node.default['postgresql']['user']    = "postgres"
 # node.default['redisio']['mirror']  = "http://download.redis.io/releases"
 
 # Ruby version
-node.default['ruby_version'] = "2.5.0"
+node.default['ruby_version'] = "2.5.1"
 
 node.default[:gem][:binary_path]    = "/opt/rubies/#{node['ruby_version']}/bin/gem"
 node.default[:gem][:default_optins] = "--no-rdoc --no-ri"
@@ -37,4 +37,4 @@ node.default['nodejs']['version'] = "9.11.1"
 node.default['nodejs']['install_method'] = "package"
 
 # Node SSL
-node.default['ssl']['enabled'] = false
+node.default['ssl']['enabled'] = true
