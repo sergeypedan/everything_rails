@@ -8,6 +8,7 @@ project_dir="<%= node['deploy']['project_dir'] %>"
 git_dir="$project_dir/git"
 work_dir="$project_dir/current"
 shared_dir="$project_dir/shared"
+backups_dir="$project_dir/backups"
 
 rails_env='production'
 
@@ -16,9 +17,78 @@ puma_pid_path="<%= node['puma']['pid_path'] %>"
 puma_state_path="<%= node['puma']['state_path'] %>"
 puma_log_dir="<%= node['puma']['log_dir'] %>"
 
+sidekiq_config="config/sidekiq.yml"
+sidekiq_logfile="log/sidekiq.log"
+sidekiq_pidfile="tmp/pids/sidekiq.pid"
+
 
 
 # Functions
+
+function backup_old_work_directory {
+  mkdir -p $backups_dir
+
+  if [ -d $work_dir ]; then
+    echo ""
+    echo "App directory exists at '$work_dir'"
+    echo "Backing-up current work directory to '$backups_dir/$(date +%Y%m%d%H%M%S)'"
+    mv $work_dir "$backups_dir/$(date +%Y%m%d%H%M%S)"
+  fi
+}
+
+
+function create_a_directory_symlink {
+  # Если в пути `destination` не указать название симлинка,
+  # оно будет равно названию оригинальной папки
+  # но тут нужно обязательно указывать название симлинка,
+  # чтобы можно было его удалять перед созданием нового
+
+     original=$1
+  destination=$2
+
+  if [ -d $original ]; then
+
+    # тут важно не похерить родительскую папку, а удалить именно симлинк
+    # echo "Removing old symlink '$destination'"
+    # rm $destination
+
+    echo "Creating symbolic link for '$original' in '$destination'"
+    ln -s $original $destination
+  else
+    echo "Symbolic link not created — '$original' does not exist"
+  fi
+}
+
+
+function create_a_file_symlink {
+     original=$1
+  destination=$2
+
+  if [ -f $original ]; then
+    # echo "Removing old symlink '$destination'"
+    # rm $destination
+
+    echo "Creating symbolic link for '$original' in '$destination'"
+    ln -s $original $destination
+  else
+    echo "Symbolic link not created — '$original' does not exist"
+  fi
+}
+
+
+function create_database {
+  echo ""
+  echo "Creating database"
+  rake db:create
+}
+
+
+function copy_project_files {
+  echo ""
+  echo "Copying files to '$work_dir'"
+  git --work-tree $work_dir --git-dir $git_dir checkout --force
+}
+
 
 function create_puma_log_directory {
   if [ -d $puma_log_dir ]; then
@@ -35,19 +105,21 @@ function create_puma_log_directory {
 function create_work_directory {
   if [ -d $work_dir ]; then
     echo ""
-    echo "App directory exists at '$work_dir'"
+    echo "App directory exists at '$work_dir', this means backing up worked incorrectly"
   else
     echo ""
+    echo "No app directory found"
     echo "Creating directory for production app: '$work_dir'"
-    mkdir -p $work_dir
+    mkdir $work_dir
   fi
 }
 
 
-function copy_project_files {
+function install_gems {
   echo ""
-  echo "Copying files to '$work_dir'"
-  git --work-tree $work_dir --git-dir $git_dir checkout --force
+  echo "Running 'bundle install'"
+  echo ""
+  bundle install
 }
 
 
@@ -58,37 +130,62 @@ function install_yarn_modules {
 }
 
 
-function prepare_assets {
-  echo ""
-  echo "Cleaning old assets"
-  bundle exec rake assets:clean
-
-  echo ""
-  echo "Precompiling assets"
-  bundle exec rake assets:precompile
+function link_assets_folder {
+  mkdir -p "$work_dir/public"
+  mkdir -p "$shared_dir/public"
+  mkdir -p "$shared_dir/public/assets"
+  create_a_directory_symlink "$shared_dir/public/assets" "$work_dir/public"
 }
 
 
-function create_database {
-  # if [ table_exists == 1 ]; then
-  #   echo ""
-  #   echo "Tables exist"
-  # else
-  #   echo ""
-  #   echo "Tables do not exist, loading schema"
-  #   bundle exec rake db:schema:load
-  # fi
+function link_credentials_file {
+  create_a_file_symlink "$shared_dir/config/secrets.yml" "$work_dir/config/secrets.yml"
+}
 
-  echo ""
-  echo "Creating database"
-  bundle exec rake db:create
+
+function link_master_key_file {
+  create_a_file_symlink "$shared_dir/config/master.key" "$work_dir/config/master.key"
+}
+
+
+function link_node_modules_folder {
+  mkdir -p "$shared_dir/node_modules"
+  create_a_directory_symlink "$shared_dir/node_modules" "$work_dir"
+}
+
+
+function link_tmp_folder {
+  mkdir -p "$shared_dir/tmp"
+  create_a_directory_symlink "$shared_dir/tmp" "$work_dir/tmp"
+}
+
+
+function link_uploads_folder {
+     original="$shared_dir/public/uploads"
+     mkdir -p $original
+
+  destination="$work_dir/public/uploads"
+     mkdir -p "$work_dir/public"
+
+  create_a_directory_symlink "$shared_dir/public/uploads" "$work_dir/public/uploads"
 }
 
 
 function migrate_database {
   echo ""
   echo "Migrating"
-  bundle exec rake db:migrate
+  rake db:migrate
+}
+
+
+function precompile_assets {
+  echo ""
+  echo "Cleaning old assets"
+  rake assets:clean
+
+  echo ""
+  echo "Precompiling assets"
+  rake assets:precompile
 }
 
 
@@ -101,14 +198,6 @@ function prepare_env {
   echo ""
   echo "Sourcing ChRuby"
   source "/etc/profile.d/chruby.sh"
-}
-
-
-function install_gems {
-  echo ""
-  echo "Running 'bundle install'"
-  echo ""
-  bundle install
 }
 
 
@@ -140,7 +229,7 @@ function start_puma {
   echo "Starting Puma"
   echo "Using Puma config from '$puma_config'"
   echo ""
-  bundle exec pumactl --config-file $puma_config start
+  pumactl --config-file $puma_config start
 }
 
 
@@ -158,98 +247,17 @@ function stop_puma {
 }
 
 
-# function table_exists {
-#   psql --command "SELECT count(*) from information_schema.tables WHERE table_name = 'users'" \
-#        --user $db_user --dbname $db_name | grep -c ' 1'
-# }
-
-
-function create_a_directory_symlink {
-  # Если в пути `destination` не указать название симлинка,
-  # оно будет равно названию оригинальной папки
-  # но тут нужно обязательно указывать название симлинка,
-  # чтобы можно было его удалять перед созданием нового
-
-     original=$1
-  destination=$2
-
+function start_sidekiq {
   echo ""
-  if [ -d $original ]; then
-
-    # тут важно не похерить родительскую папку, а удалить именно симлинк
-    echo "Removing old symlink '$destination'"
-    rm $destination
-
-    echo "Creating symbolic link for '$original' in '$destination'"
-    ln -s $original $destination
-  else
-    echo "Symbolic link not created — '$original' does not exist"
-  fi
+  echo "Starting Sidekiq"
+  sidekiq --config $sidekiq_config --daemon --logfile $sidekiq_logfile --pidfile $sidekiq_pidfile
 }
 
 
-function create_a_file_symlink {
-     original=$1
-  destination=$2
-
+function stop_sidekiq {
   echo ""
-  if [ -f $original ]; then
-    echo "Removing old symlink '$destination'"
-    rm $destination
-
-    echo "Creating symbolic link for '$original' in '$destination'"
-    ln -s $original $destination
-  else
-    echo "Symbolic link not created — '$original' does not exist"
-  fi
-}
-
-
-function link_assets_folder {
-     original="$shared_dir/public/assets"
-     mkdir -p $original
-
-  destination="$work_dir/public/assets"
-     mkdir -p "$work_dir/public"
-
-  if [ -d $destination ]; then
-    mv $destination $original
-  fi
-
-  create_a_directory_symlink $original $destination
-}
-
-
-function link_credentials_file {
-  create_a_file_symlink "$shared_dir/config/secrets.yml" "$work_dir/config/secrets.yml"
-}
-
-
-function link_master_key_file {
-  create_a_file_symlink "$shared_dir/config/master.key" "$work_dir/config/master.key"
-}
-
-
-function link_tmp_folder {
-     original="$shared_dir/tmp"
-  destination="$work_dir/tmp"
-
-  if [ -d $destination ]; then
-    mv $destination $original
-  fi
-
-  create_a_directory_symlink $original $destination
-}
-
-
-function link_uploads_folder {
-     original="$shared_dir/public/uploads"
-     mkdir -p $original
-
-  destination="$work_dir/public/uploads"
-     mkdir -p "$work_dir/public"
-
-  create_a_directory_symlink "$shared_dir/public/uploads" "$work_dir/public/uploads"
+  echo "Stopping Sidekiq"
+  sidekiqctl stop $sidekiq_pidfile 5
 }
 
 
@@ -261,23 +269,28 @@ while read oldrev newrev ref; do
     echo ""; echo "Master ref received. Deploying master branch to production..."
 
     prepare_env
+    stop_sidekiq
     stop_puma
     create_puma_log_directory
+    backup_old_work_directory
     create_work_directory
     copy_project_files
+    echo ""; echo "Creating symbolic links"
     link_assets_folder
-    link_uploads_folder
-    link_tmp_folder
     link_credentials_file
     link_master_key_file
+    link_node_modules_folder
+    link_tmp_folder
+    link_uploads_folder
     cd $work_dir; echo ""; echo "Entering directory '$PWD'"
     install_gems
     install_yarn_modules
     create_database
     migrate_database
-    prepare_assets
+    precompile_assets
     start_puma
     restart_redis
+    start_sidekiq
     restart_nginx
 
     echo ""; echo "Git hooks deploy complete"
