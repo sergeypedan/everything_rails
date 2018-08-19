@@ -14,7 +14,7 @@
 
 # ruby_rvm_ruby do
 # 	action :install
-# 	version node['ruby_version']
+# 	version node['ruby']['version']
 # 	# default true
 # 	user 'deploy'
 # end

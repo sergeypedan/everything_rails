@@ -22,7 +22,7 @@ end
 # Install a Ruby version
 # https://github.com/sous-chefs/ruby_rbenv/blob/master/test/fixtures/cookbooks/test/recipes/global.rb
 #
-rbenv_ruby node['ruby_version'] do
+rbenv_ruby node['ruby']['version'] do
   verbose true
 	# user # Optional: If passed the user rbenv to install to
 end
@@ -41,7 +41,7 @@ end
 # Set that Ruby as the global Ruby
 # https://github.com/sous-chefs/ruby_rbenv/blob/master/test/fixtures/cookbooks/test/recipes/global.rb
 #
-rbenv_global node['ruby_version']
+rbenv_global node['ruby']['version']
 
 
 # Rehash
