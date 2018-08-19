@@ -26,7 +26,7 @@ node.default['puma']['sockets_dir'] = "/run"
 node.default['puma']['socket_path'] = "/run/puma/#{node['project']['domain']}.sock"
 node.default['puma']['state_path']  = "/run/puma/#{node['project']['domain']}.state"
 
-node.default['rails']['version'] = "5.2.1"
+# node.default['rails']['version'] = "5.2.1"
 
 # node.default['redisio']['version'] = "4.0.8"
 # node.default['redisio']['mirror']  = "http://download.redis.io/releases"
